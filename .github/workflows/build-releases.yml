@@ -1,3 +1,4 @@
+
 name: "Build & Release"
 
 on:
@@ -9,79 +10,66 @@ jobs:
   build-release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write 
+      contents: write
     steps:
-      # 1. Checkout main branch
       - uses: actions/checkout@v4
 
-      # 2. Setup Java
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: "18.x"
 
-      # 3. Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           flutter-version: 3.35.3
-          
-        # 4. Get dependencies
+
+      # ---------------------------------------
+      # 🚀 CACHE FIX: Enables GitHub build cache
+      # ---------------------------------------
+      - name: Cache Flutter dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            build/
+          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-
+      # ---------------------------------------
+
       - name: Get Flutter packages
         run: flutter pub get
 
-      # 5. Analyze & test
-      # - name: Analyze & Test
-      #   run: |
-      #     flutter analyze
-      #     flutter test
-
-      # 6. Build APK
       - name: Build APK
         run: flutter build apk --release --verbose
 
-      # 7. Build IPA (no codesign)
-      # - name: Build IPA
-      #   run: flutter build ipa --no-codesign
-
-      # 8. Compress IPA for artifacts
-      # - name: Compress IPA
-      #   run: |
-      #     mkdir -p build/ios
-      #     tar -czf build/ios_build.tar.gz build/ios/Runner.app
-
-      # 9. Upload artifacts
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4.6.2
         with:
           name: releases
-          path: |
-            build/app/outputs/flutter-apk/app-release.apk
-#            build/ios_build.tar.gz
+          path: build/app/outputs/flutter-apk/app-release.apk
 
-      # 10. Tag main branch for release
       - name: Create Git Tag
         id: tag
         run: |
           TAG=v$(date +'%Y.%m.%d.%H%M%S')
-          echo "Creating tag $TAG..."
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git tag $TAG
           git push origin $TAG
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-     # 11. Create GitHub Release 
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-           tag_name: ${{ steps.tag.outputs.TAG }}
-           name: "Release ${{ steps.tag.outputs.TAG }}"
-           body: "Automated release for ${{ steps.tag.outputs.TAG }}"
-           files: |
-             build/app/outputs/flutter-apk/app-release.apk
-             # build/ios_build.tar.gz
+          tag_name: ${{ steps.tag.outputs.TAG }}
+          name: "Release ${{ steps.tag.outputs.TAG }}"
+          body: "Automated release for ${{ steps.tag.outputs.TAG }}"
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
