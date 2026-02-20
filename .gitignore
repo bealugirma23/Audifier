@@ -45,3 +45,5 @@ app.*.map.json
 /android/app/release
 upload-keystore.jks
 upload-keystore.keystore
+config.bat
+node_modules
