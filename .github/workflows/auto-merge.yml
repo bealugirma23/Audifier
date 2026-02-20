@@ -1,0 +1,22 @@
+
+name: "Auto Merge PR"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  merge-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Merge PR into main
+        env:
+          GH_TOKEN: ${{ secrets.BOT_PAT }}
+        run: |
+          echo "Attempting to merge PR #${{ github.event.pull_request.number }} into main..."
+          gh pr merge ${{ github.event.pull_request.number }} --merge --admin || echo "Merge failed or not ready"
